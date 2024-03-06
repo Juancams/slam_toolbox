@@ -286,14 +286,16 @@ public:
   std::pair<IndexType, DistanceType> worst_item() const
   {
     if (m_indices_dists.empty()) {
-      throw std::runtime_error("Cannot invoke RadiusResultSet::worst_item() on "
+      throw std::runtime_error(
+              "Cannot invoke RadiusResultSet::worst_item() on "
               "an empty list of results.");
     }
     typedef
       typename std::vector<std::pair<IndexType, DistanceType>>::const_iterator
       DistIt;
-    DistIt it = std::max_element(m_indices_dists.begin(), m_indices_dists.end(),
-        IndexDist_Sorter());
+    DistIt it = std::max_element(
+      m_indices_dists.begin(), m_indices_dists.end(),
+      IndexDist_Sorter());
     return *it;
   }
 };
@@ -512,8 +514,9 @@ struct SO2_Adaptor
     const T * a, const size_t b_idx,
     size_t size) const
   {
-    return accum_dist(a[size - 1], data_source.kdtree_get_pt(b_idx, size - 1),
-             size - 1);
+    return accum_dist(
+      a[size - 1], data_source.kdtree_get_pt(b_idx, size - 1),
+      size - 1);
   }
 
   /** Note: this assumes that input angles are already in the range [-pi,pi] */
@@ -982,7 +985,8 @@ public:
       IndexType idx;
       int cutfeat;
       DistanceType cutval;
-      middleSplit_(obj, &obj.vind[0] + left, right - left, idx, cutfeat, cutval,
+      middleSplit_(
+        obj, &obj.vind[0] + left, right - left, idx, cutfeat, cutval,
         bbox);
 
       node->node_type.sub.divfeat = cutfeat;
@@ -1323,8 +1327,9 @@ public:
     }
     computeBoundingBox(BaseClassRef::root_bbox);
     BaseClassRef::root_node =
-      this->divideTree(*this, 0, BaseClassRef::m_size,
-        BaseClassRef::root_bbox);                  // construct the tree
+      this->divideTree(
+      *this, 0, BaseClassRef::m_size,
+      BaseClassRef::root_bbox);                    // construct the tree
   }
 
   /** \name Query methods
@@ -1361,10 +1366,12 @@ public:
     distance_vector_t
       dists;   // fixed or variable-sized container (depending on DIM)
     auto zero = static_cast<decltype(result.worstDist())>(0);
-    assign(dists, (DIM > 0 ? DIM : BaseClassRef::dim),
+    assign(
+      dists, (DIM > 0 ? DIM : BaseClassRef::dim),
       zero);      // Fill it with zeros.
     DistanceType distsq = this->computeInitialDistances(*this, vec, dists);
-    searchLevel(result, vec, BaseClassRef::root_node, distsq, dists,
+    searchLevel(
+      result, vec, BaseClassRef::root_node, distsq, dists,
       epsError);           // "count_leaf" parameter removed since was neither
                            // used nor returned to the user.
     return result.full();
@@ -1460,7 +1467,8 @@ public:
     } else {
       const size_t N = dataset.kdtree_get_point_count();
       if (!N) {
-        throw std::runtime_error("[nanoflann] computeBoundingBox() called but "
+        throw std::runtime_error(
+                "[nanoflann] computeBoundingBox() called but "
                 "no data points found.");
       }
       for (int i = 0; i < (DIM > 0 ? DIM : BaseClassRef::dim); ++i) {
@@ -1543,8 +1551,9 @@ public:
     mindistsq = mindistsq + cut_dist - dst;
     dists[idx] = cut_dist;
     if (mindistsq * epsError <= result_set.worstDist()) {
-      if (!searchLevel(result_set, vec, otherChild, mindistsq, dists,
-        epsError))
+      if (!searchLevel(
+          result_set, vec, otherChild, mindistsq, dists,
+          epsError))
       {
         // the resultset doesn't want to receive any more points, we're done
         // searching!
@@ -1689,7 +1698,8 @@ public:
     std::swap(index_params, tmp.index_params);
     std::swap(treeIndex, tmp.treeIndex);
     std::swap(BaseClassRef::m_size, tmp.BaseClassRef::m_size);
-    std::swap(BaseClassRef::m_size_at_index_build,
+    std::swap(
+      BaseClassRef::m_size_at_index_build,
       tmp.BaseClassRef::m_size_at_index_build);
     std::swap(BaseClassRef::root_node, tmp.BaseClassRef::root_node);
     std::swap(BaseClassRef::root_bbox, tmp.BaseClassRef::root_bbox);
@@ -1710,8 +1720,9 @@ public:
     }
     computeBoundingBox(BaseClassRef::root_bbox);
     BaseClassRef::root_node =
-      this->divideTree(*this, 0, BaseClassRef::m_size,
-        BaseClassRef::root_bbox);                  // construct the tree
+      this->divideTree(
+      *this, 0, BaseClassRef::m_size,
+      BaseClassRef::root_bbox);                    // construct the tree
   }
 
   /** \name Query methods
@@ -1747,10 +1758,12 @@ public:
     // fixed or variable-sized container (depending on DIM)
     distance_vector_t dists;
     // Fill it with zeros.
-    assign(dists, (DIM > 0 ? DIM : BaseClassRef::dim),
+    assign(
+      dists, (DIM > 0 ? DIM : BaseClassRef::dim),
       static_cast<typename distance_vector_t::value_type>(0));
     DistanceType distsq = this->computeInitialDistances(*this, vec, dists);
-    searchLevel(result, vec, BaseClassRef::root_node, distsq, dists,
+    searchLevel(
+      result, vec, BaseClassRef::root_node, distsq, dists,
       epsError);           // "count_leaf" parameter removed since was neither
                            // used nor returned to the user.
     return result.full();
@@ -1833,7 +1846,8 @@ public:
     } else {
       const size_t N = BaseClassRef::m_size;
       if (!N) {
-        throw std::runtime_error("[nanoflann] computeBoundingBox() called but "
+        throw std::runtime_error(
+                "[nanoflann] computeBoundingBox() called but "
                 "no data points found.");
       }
       for (int i = 0; i < (DIM > 0 ? DIM : BaseClassRef::dim); ++i) {
@@ -2164,8 +2178,9 @@ struct KDTreeEigenMatrixAdaptor
               "Data set dimensionality does not match the 'DIM' template argument");
     }
     index =
-      new index_t(static_cast<int>(dims), *this /* adaptor */,
-        nanoflann::KDTreeSingleIndexAdaptorParams(leaf_max_size));
+      new index_t(
+      static_cast<int>(dims), *this /* adaptor */,
+      nanoflann::KDTreeSingleIndexAdaptorParams(leaf_max_size));
     index->buildIndex();
   }
 

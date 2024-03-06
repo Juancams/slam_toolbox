@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "karto_sdk/Mapper.h"
 
 namespace serialization
@@ -38,14 +39,15 @@ inline bool write(
   const std::string & filename,
   karto::Mapper & mapper,
   karto::Dataset & dataset,
-  rclcpp::Node::SharedPtr node)
+  rclcpp_lifecycle::LifecycleNode::SharedPtr node)
 {
   try {
     mapper.SaveToFile(filename + std::string(".posegraph"));
     dataset.SaveToFile(filename + std::string(".data"));
     return true;
   } catch (boost::archive::archive_exception e) {
-    RCLCPP_ERROR(node->get_logger(),
+    RCLCPP_ERROR(
+      node->get_logger(),
       "Failed to write file: Exception %s", e.what());
     return false;
   }
@@ -55,10 +57,11 @@ inline bool read(
   const std::string & filename,
   karto::Mapper & mapper,
   karto::Dataset & dataset,
-  rclcpp::Node::SharedPtr node)
+  rclcpp_lifecycle::LifecycleNode::SharedPtr node)
 {
   if (!fileExists(filename + std::string(".posegraph"))) {
-    RCLCPP_ERROR(node->get_logger(),
+    RCLCPP_ERROR(
+      node->get_logger(),
       "serialization::Read: Failed to open "
       "requested file: %s.", filename.c_str());
     return false;
@@ -69,7 +72,8 @@ inline bool read(
     dataset.LoadFromFile(filename + std::string(".data"));
     return true;
   } catch (boost::archive::archive_exception e) {
-    RCLCPP_ERROR(node->get_logger(),
+    RCLCPP_ERROR(
+      node->get_logger(),
       "serialization::Read: Failed to read file: "
       "Exception: %s", e.what());
   }

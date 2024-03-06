@@ -23,14 +23,15 @@
 #include "nanoflann.hpp"
 
 // And this is the "dataset to kd-tree" adaptor class:
-template<typename Derived>
+template < typename Derived >
 struct VertexVectorPoseNanoFlannAdaptor
 {
   const Derived & obj;  //!< A const ref to the data set origin
 
   /// The constructor that sets the data set source
   explicit VertexVectorPoseNanoFlannAdaptor(const Derived & obj_)
-  : obj(obj_) {}
+  : obj(obj_) {
+  }
 
   /// CRTP helper method
   inline const Derived & derived() const {return obj;}
@@ -54,18 +55,19 @@ struct VertexVectorPoseNanoFlannAdaptor
   //   class and returned in "bb" so it can be avoided to redo it again.
   //   Look at bb.size() to find out the expected
   //   dimensionality (e.g. 2 or 3 for point clouds)
-  template<class BBOX>
+  template < class BBOX >
   bool kdtree_get_bbox(BBOX & /*bb*/) const {return false;}
 };
 
 // And this is the "dataset to kd-tree" adaptor class:
-template<typename Derived>
+template < typename Derived >
 struct VertexVectorScanCenterNanoFlannAdaptor
 {
   const Derived & obj;
 
   explicit VertexVectorScanCenterNanoFlannAdaptor(const Derived & obj_)
-  : obj(obj_) {}
+  : obj(obj_) {
+  }
 
   inline const Derived & derived() const {return obj;}
 
@@ -78,7 +80,7 @@ struct VertexVectorScanCenterNanoFlannAdaptor
     }
   }
 
-  template<class BBOX>
+  template < class BBOX >
   bool kdtree_get_bbox(BBOX & /*bb*/) const {return false;}
 };  // namespace VertexVectorScanCenterNanoFlannAdaptor
 

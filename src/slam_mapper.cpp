@@ -93,7 +93,7 @@ karto::Pose2 SMapper::toKartoPose(const tf2::Transform & pose) const
 }
 
 /*****************************************************************************/
-void SMapper::configure(const rclcpp::Node::SharedPtr & node)
+void SMapper::configure(const rclcpp_lifecycle::LifecycleNode::SharedPtr & node)
 /*****************************************************************************/
 {
   bool use_scan_matching = true;
@@ -130,7 +130,8 @@ void SMapper::configure(const rclcpp::Node::SharedPtr & node)
   }
   node->get_parameter("scan_buffer_size", scan_buffer_size);
   if (scan_buffer_size <= 0) {
-    RCLCPP_WARN(node->get_logger(),
+    RCLCPP_WARN(
+      node->get_logger(),
       "You've set scan_buffer_size to be a value smaller than zero,"
       "this isn't allowed so it will be set to default value 10.");
     scan_buffer_size = 10;
@@ -143,7 +144,8 @@ void SMapper::configure(const rclcpp::Node::SharedPtr & node)
   }
   node->get_parameter("scan_buffer_maximum_scan_distance", scan_buffer_maximum_scan_distance);
   if (math::Square(scan_buffer_maximum_scan_distance) <= 1e-06) {
-    RCLCPP_WARN(node->get_logger(),
+    RCLCPP_WARN(
+      node->get_logger(),
       "You've set scan_buffer_maximum_scan_distance to be a value whose square is smaller than 1e-06,"
       "this isn't allowed so it will be set to default value 10.");
     scan_buffer_maximum_scan_distance = 10;
@@ -219,7 +221,8 @@ void SMapper::configure(const rclcpp::Node::SharedPtr & node)
   }
   node->get_parameter("correlation_search_space_dimension", correlation_search_space_dimension);
   if (correlation_search_space_dimension <= 0) {
-    RCLCPP_WARN(node->get_logger(),
+    RCLCPP_WARN(
+      node->get_logger(),
       "You've set correlation_search_space_dimension to be negative,"
       "this isn't allowed so it will be set to default value 0.5.");
     correlation_search_space_dimension = 0.5;
@@ -234,7 +237,8 @@ void SMapper::configure(const rclcpp::Node::SharedPtr & node)
   }
   node->get_parameter("correlation_search_space_resolution", correlation_search_space_resolution);
   if (correlation_search_space_resolution <= 0) {
-    RCLCPP_WARN(node->get_logger(),
+    RCLCPP_WARN(
+      node->get_logger(),
       "You've set correlation_search_space_resolution to be negative,"
       "this isn't allowed so it will be set to default value 0.01.");
     correlation_search_space_resolution = 0.01;
@@ -251,7 +255,8 @@ void SMapper::configure(const rclcpp::Node::SharedPtr & node)
     "correlation_search_space_smear_deviation",
     correlation_search_space_smear_deviation);
   if (correlation_search_space_smear_deviation <= 0) {
-    RCLCPP_WARN(node->get_logger(),
+    RCLCPP_WARN(
+      node->get_logger(),
       "You've set correlation_search_space_smear_deviation to be negative,"
       "this isn't allowed so it will be set to default value 0.1.");
     correlation_search_space_smear_deviation = 0.1;
@@ -265,7 +270,8 @@ void SMapper::configure(const rclcpp::Node::SharedPtr & node)
   }
   node->get_parameter("loop_search_space_dimension", loop_search_space_dimension);
   if (loop_search_space_dimension <= 0) {
-    RCLCPP_WARN(node->get_logger(),
+    RCLCPP_WARN(
+      node->get_logger(),
       "You've set loop_search_space_dimension to be negative,"
       "this isn't allowed so it will be set to default value 8.0.");
     loop_search_space_dimension = 8.0;
@@ -278,7 +284,8 @@ void SMapper::configure(const rclcpp::Node::SharedPtr & node)
   }
   node->get_parameter("loop_search_space_resolution", loop_search_space_resolution);
   if (loop_search_space_resolution <= 0) {
-    RCLCPP_WARN(node->get_logger(),
+    RCLCPP_WARN(
+      node->get_logger(),
       "You've set loop_search_space_resolution to be negative,"
       "this isn't allowed so it will be set to default value 0.05.");
     loop_search_space_resolution = 0.05;
@@ -291,7 +298,8 @@ void SMapper::configure(const rclcpp::Node::SharedPtr & node)
   }
   node->get_parameter("loop_search_space_smear_deviation", loop_search_space_smear_deviation);
   if (loop_search_space_smear_deviation <= 0) {
-    RCLCPP_WARN(node->get_logger(),
+    RCLCPP_WARN(
+      node->get_logger(),
       "You've set loop_search_space_smear_deviation to be negative,"
       "this isn't allowed so it will be set to default value 0.03.");
     loop_search_space_smear_deviation = 0.03;

@@ -35,7 +35,7 @@ SlamToolbox::SlamToolbox()
 
 /*****************************************************************************/
 SlamToolbox::SlamToolbox(rclcpp::NodeOptions options)
-: Node("slam_toolbox", "", options),
+: LifecycleNode("slam_toolbox", "", options),
   solver_loader_("slam_toolbox", "karto::ScanSolver"),
   processor_type_(PROCESS),
   first_measurement_(true),
@@ -44,14 +44,16 @@ SlamToolbox::SlamToolbox(rclcpp::NodeOptions options)
   minimum_time_interval_(std::chrono::nanoseconds(0))
 /*****************************************************************************/
 {
-  smapper_ = std::make_unique<mapper_utils::SMapper>();
-  dataset_ = std::make_unique<Dataset>();
+  node_ = std::make_shared<rclcpp::Node>("slam_toolbox");
 }
 
 /*****************************************************************************/
-void SlamToolbox::configure()
+CallbackReturnT SlamToolbox::on_configure(const rclcpp_lifecycle::State & state)
 /*****************************************************************************/
 {
+  smapper_ = std::make_unique<mapper_utils::SMapper>();
+  dataset_ = std::make_unique<Dataset>();
+
   setParams();
   setROSInterfaces();
   setSolver();
@@ -62,8 +64,9 @@ void SlamToolbox::configure()
     tf_.get(), base_frame_, odom_frame_);
   scan_holder_ = std::make_unique<laser_utils::ScanHolder>(lasers_);
   if (use_map_saver_) {
-    map_saver_ = std::make_unique<map_saver::MapSaver>(shared_from_this(),
-        map_name_);
+    map_saver_ = std::make_unique<map_saver::MapSaver>(
+      shared_from_this(),
+      map_name_);
   }
   closure_assistant_ =
     std::make_unique<loop_closure_assistant::LoopClosureAssistant>(
@@ -73,13 +76,91 @@ void SlamToolbox::configure()
 
   double transform_publish_period = 0.05;
   transform_publish_period =
-    this->declare_parameter("transform_publish_period",
-      transform_publish_period);
-  threads_.push_back(std::make_unique<boost::thread>(
-      boost::bind(&SlamToolbox::publishTransformLoop,
-      this, transform_publish_period)));
-  threads_.push_back(std::make_unique<boost::thread>(
+    this->declare_parameter(
+    "transform_publish_period",
+    transform_publish_period);
+  threads_.push_back(
+    std::make_unique<boost::thread>(
+      boost::bind(
+        &SlamToolbox::publishTransformLoop,
+        this, transform_publish_period)));
+  threads_.push_back(
+    std::make_unique<boost::thread>(
       boost::bind(&SlamToolbox::publishVisualizations, this)));
+  threads_.push_back(
+    std::make_unique<boost::thread>(
+      [&]() {
+        rclcpp::spin(node_);
+      }));
+
+  loadPoseGraphByParams();
+
+  return CallbackReturnT::SUCCESS;
+}
+
+/*****************************************************************************/
+CallbackReturnT SlamToolbox::on_activate(const rclcpp_lifecycle::State & state)
+/*****************************************************************************/
+{
+  sst_->on_activate();
+  sstm_->on_activate();
+  pose_pub_->on_activate();
+
+  return CallbackReturnT::SUCCESS;
+}
+
+/*****************************************************************************/
+CallbackReturnT SlamToolbox::on_deactivate(const rclcpp_lifecycle::State & state)
+/*****************************************************************************/
+{
+  sst_->on_deactivate();
+  sstm_->on_deactivate();
+  pose_pub_->on_deactivate();
+
+  return CallbackReturnT::SUCCESS;
+}
+
+/*****************************************************************************/
+CallbackReturnT SlamToolbox::on_cleanup(const rclcpp_lifecycle::State & state)
+/*****************************************************************************/
+{
+  for (int i = 0; i != threads_.size(); i++) {
+    threads_[i]->join();
+  }
+
+  threads_.clear();
+
+  smapper_.reset();
+  dataset_.reset();
+  closure_assistant_.reset();
+  map_saver_.reset();
+  pose_helper_.reset();
+  laser_assistant_.reset();
+  scan_holder_.reset();
+  solver_.reset();
+  sst_.reset();
+  sstm_.reset();
+  ssMap_.reset();
+  ssPauseMeasurements_.reset();
+  ssSerialize_.reset();
+  ssDesserialize_.reset();
+  pose_pub_.reset();
+
+  return CallbackReturnT::SUCCESS;
+}
+
+/*****************************************************************************/
+CallbackReturnT SlamToolbox::on_shutdown(const rclcpp_lifecycle::State & state)
+/*****************************************************************************/
+{
+  return CallbackReturnT::SUCCESS;
+}
+
+/*****************************************************************************/
+CallbackReturnT SlamToolbox::on_error(const rclcpp_lifecycle::State & state)
+/*****************************************************************************/
+{
+  return CallbackReturnT::SUCCESS;
 }
 
 /*****************************************************************************/
@@ -98,6 +179,13 @@ SlamToolbox::~SlamToolbox()
   laser_assistant_.reset();
   scan_holder_.reset();
   solver_.reset();
+  sst_.reset();
+  sstm_.reset();
+  ssMap_.reset();
+  ssPauseMeasurements_.reset();
+  ssSerialize_.reset();
+  ssDesserialize_.reset();
+  pose_pub_.reset();
 }
 
 /*****************************************************************************/
@@ -110,11 +198,13 @@ void SlamToolbox::setSolver()
 
   try {
     solver_ = solver_loader_.createSharedInstance(solver_plugin);
-    RCLCPP_INFO(get_logger(), "Using solver plugin %s",
+    RCLCPP_INFO(
+      get_logger(), "Using solver plugin %s",
       solver_plugin.c_str());
     solver_->Configure(shared_from_this());
   } catch (const pluginlib::PluginlibException & ex) {
-    RCLCPP_FATAL(get_logger(), "Failed to create %s, is it "
+    RCLCPP_FATAL(
+      get_logger(), "Failed to create %s, is it "
       "registered and built? Exception: %s.", solver_plugin.c_str(), ex.what());
     exit(1);
   }
@@ -138,7 +228,8 @@ void SlamToolbox::setParams()
   resolution_ = 0.05;
   resolution_ = this->declare_parameter("resolution", resolution_);
   if (resolution_ <= 0.0) {
-    RCLCPP_WARN(this->get_logger(),
+    RCLCPP_WARN(
+      this->get_logger(),
       "You've set resolution of map to be zero or negative,"
       "this isn't allowed so it will be set to default value 0.05.");
     resolution_ = 0.05;
@@ -158,20 +249,24 @@ void SlamToolbox::setParams()
   throttle_scans_ = 1;
   throttle_scans_ = this->declare_parameter("throttle_scans", throttle_scans_);
   if (throttle_scans_ == 0) {
-    RCLCPP_WARN(this->get_logger(),
+    RCLCPP_WARN(
+      this->get_logger(),
       "You've set throttle_scans to be zero,"
       "this isn't allowed so it will be set to default value 1.");
     throttle_scans_ = 1;
   }
   position_covariance_scale_ = 1.0;
-  position_covariance_scale_ = this->declare_parameter("position_covariance_scale", position_covariance_scale_);
+  position_covariance_scale_ = this->declare_parameter(
+    "position_covariance_scale",
+    position_covariance_scale_);
 
   yaw_covariance_scale_ = 1.0;
   yaw_covariance_scale_ = this->declare_parameter("yaw_covariance_scale", yaw_covariance_scale_);
 
   enable_interactive_mode_ = false;
-  enable_interactive_mode_ = this->declare_parameter("enable_interactive_mode",
-      enable_interactive_mode_);
+  enable_interactive_mode_ = this->declare_parameter(
+    "enable_interactive_mode",
+    enable_interactive_mode_);
 
   double tmp_val = 0.5;
   tmp_val = this->declare_parameter("transform_timeout", tmp_val);
@@ -182,12 +277,13 @@ void SlamToolbox::setParams()
   bool debug = false;
   debug = this->declare_parameter("debug_logging", debug);
   if (debug) {
-    rcutils_ret_t rtn = rcutils_logging_set_logger_level("logger_name",
-        RCUTILS_LOG_SEVERITY_DEBUG);
+    rcutils_ret_t rtn = rcutils_logging_set_logger_level(
+      "logger_name",
+      RCUTILS_LOG_SEVERITY_DEBUG);
   }
 
   smapper_->configure(shared_from_this());
-  this->declare_parameter("paused_new_measurements",rclcpp::ParameterType::PARAMETER_BOOL);
+  this->declare_parameter("paused_new_measurements", rclcpp::ParameterType::PARAMETER_BOOL);
   this->set_parameter({"paused_new_measurements", false});
 }
 
@@ -197,8 +293,9 @@ void SlamToolbox::setROSInterfaces()
 {
   double tmp_val = 30.;
   tmp_val = this->declare_parameter("tf_buffer_duration", tmp_val);
-  tf_ = std::make_unique<tf2_ros::Buffer>(this->get_clock(),
-      tf2::durationFromSec(tmp_val));
+  tf_ = std::make_unique<tf2_ros::Buffer>(
+    this->get_clock(),
+    tf2::durationFromSec(tmp_val));
   auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
     get_node_base_interface(),
     get_node_timers_interface());
@@ -213,29 +310,34 @@ void SlamToolbox::setROSInterfaces()
   sstm_ = this->create_publisher<nav_msgs::msg::MapMetaData>(
     map_name_ + "_metadata",
     rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
-  ssMap_ = this->create_service<nav_msgs::srv::GetMap>("slam_toolbox/dynamic_map",
-      std::bind(&SlamToolbox::mapCallback, this, std::placeholders::_1,
+  ssMap_ = this->create_service<nav_msgs::srv::GetMap>(
+    "slam_toolbox/dynamic_map",
+    std::bind(
+      &SlamToolbox::mapCallback, this, std::placeholders::_1,
       std::placeholders::_2, std::placeholders::_3));
   ssPauseMeasurements_ = this->create_service<slam_toolbox::srv::Pause>(
     "slam_toolbox/pause_new_measurements",
-    std::bind(&SlamToolbox::pauseNewMeasurementsCallback,
-    this, std::placeholders::_1,
-    std::placeholders::_2, std::placeholders::_3));
+    std::bind(
+      &SlamToolbox::pauseNewMeasurementsCallback,
+      this, std::placeholders::_1,
+      std::placeholders::_2, std::placeholders::_3));
   ssSerialize_ = this->create_service<slam_toolbox::srv::SerializePoseGraph>(
     "slam_toolbox/serialize_map",
-    std::bind(&SlamToolbox::serializePoseGraphCallback, this,
-    std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    std::bind(
+      &SlamToolbox::serializePoseGraphCallback, this,
+      std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
   ssDesserialize_ = this->create_service<slam_toolbox::srv::DeserializePoseGraph>(
     "slam_toolbox/deserialize_map",
-    std::bind(&SlamToolbox::deserializePoseGraphCallback, this,
-    std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    std::bind(
+      &SlamToolbox::deserializePoseGraphCallback, this,
+      std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
   scan_filter_sub_ =
     std::make_unique<message_filters::Subscriber<sensor_msgs::msg::LaserScan>>(
-    shared_from_this().get(), scan_topic_, rmw_qos_profile_sensor_data);
+    node_, scan_topic_, rmw_qos_profile_sensor_data);
   scan_filter_ =
     std::make_unique<tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>>(
-    *scan_filter_sub_, *tf_, odom_frame_, scan_queue_size_, shared_from_this(),
+    *scan_filter_sub_, *tf_, odom_frame_, scan_queue_size_, node_,
     tf2::durationFromSec(transform_timeout_.seconds()));
   scan_filter_->registerCallback(
     std::bind(&SlamToolbox::laserCallback, this, std::placeholders::_1));
@@ -285,8 +387,9 @@ void SlamToolbox::publishVisualizations()
   og.header.frame_id = map_frame_;
 
   double map_update_interval = 10;
-  map_update_interval = this->declare_parameter("map_update_interval",
-      map_update_interval);
+  map_update_interval = this->declare_parameter(
+    "map_update_interval",
+    map_update_interval);
   rclcpp::Rate r(1.0 / map_update_interval);
 
   while (rclcpp::ok()) {
@@ -333,8 +436,12 @@ bool SlamToolbox::shouldStartWithPoseGraph(
 {
   // if given a map to load at run time, do it.
   this->declare_parameter("map_file_name", std::string(""));
-  auto map_start_pose = this->declare_parameter("map_start_pose",rclcpp::ParameterType::PARAMETER_DOUBLE_ARRAY);
-  auto map_start_at_dock = this->declare_parameter("map_start_at_dock",rclcpp::ParameterType::PARAMETER_BOOL);
+  auto map_start_pose = this->declare_parameter(
+    "map_start_pose",
+    rclcpp::ParameterType::PARAMETER_DOUBLE_ARRAY);
+  auto map_start_at_dock = this->declare_parameter(
+    "map_start_at_dock",
+    rclcpp::ParameterType::PARAMETER_BOOL);
   filename = this->get_parameter("map_file_name").as_string();
   if (!filename.empty()) {
     std::vector<double> read_pose;
@@ -342,7 +449,8 @@ bool SlamToolbox::shouldStartWithPoseGraph(
       read_pose = map_start_pose.get<std::vector<double>>();
       start_at_dock = false;
       if (read_pose.size() != 3) {
-        RCLCPP_ERROR(get_logger(), "LocalizationSlamToolbox: Incorrect "
+        RCLCPP_ERROR(
+          get_logger(), "LocalizationSlamToolbox: Incorrect "
           "number of arguments for map starting pose. Must be in format: "
           "[x, y, theta]. Starting at the origin");
         pose.x = 0.;
@@ -356,8 +464,9 @@ bool SlamToolbox::shouldStartWithPoseGraph(
     } else if (map_start_at_dock.get_type() != rclcpp::ParameterType::PARAMETER_NOT_SET) {
       start_at_dock = map_start_at_dock.get<bool>();
     } else {
-      RCLCPP_ERROR(get_logger(), "LocalizationSlamToolbox: Map starting "
-          "pose not specified. Set either map_start_pose or map_start_at_dock.");
+      RCLCPP_ERROR(
+        get_logger(), "LocalizationSlamToolbox: Map starting "
+        "pose not specified. Set either map_start_pose or map_start_at_dock.");
       return false;
     }
 
@@ -379,7 +488,8 @@ LaserRangeFinder * SlamToolbox::getLaser(
       lasers_[frame] = laser_assistant_->toLaserMetadata(*scan);
       dataset_->Add(lasers_[frame].getLaser(), true);
     } catch (tf2::TransformException & e) {
-      RCLCPP_ERROR(get_logger(), "Failed to compute laser pose, "
+      RCLCPP_ERROR(
+        get_logger(), "Failed to compute laser pose, "
         "aborting initialization (%s)", e.what());
       return nullptr;
     }
@@ -428,8 +538,10 @@ tf2::Stamped<tf2::Transform> SlamToolbox::setTransformFromPoses(
   tf2::Quaternion q(0., 0., 0., 1.0);
   q.setRPY(0., 0., corrected_pose.GetHeading());
   tf2::Stamped<tf2::Transform> base_to_map(
-    tf2::Transform(q, tf2::Vector3(corrected_pose.GetX(),
-    corrected_pose.GetY(), 0.0)).inverse(), tf2_ros::fromMsg(t), base_frame_);
+    tf2::Transform(
+      q, tf2::Vector3(
+        corrected_pose.GetX(),
+        corrected_pose.GetY(), 0.0)).inverse(), tf2_ros::fromMsg(t), base_frame_);
   try {
     geometry_msgs::msg::TransformStamped base_to_map_msg, odom_to_map_msg;
 
@@ -446,7 +558,8 @@ tf2::Stamped<tf2::Transform> SlamToolbox::setTransformFromPoses(
     odom_to_map_msg = tf_->transform(base_to_map_msg, odom_frame_);
     tf2::fromMsg(odom_to_map_msg, odom_to_map);
   } catch (tf2::TransformException & e) {
-    RCLCPP_ERROR(get_logger(), "Transform from base_link to odom failed: %s",
+    RCLCPP_ERROR(
+      get_logger(), "Transform from base_link to odom failed: %s",
       e.what());
     return odom_to_map;
   }
@@ -467,8 +580,9 @@ tf2::Stamped<tf2::Transform> SlamToolbox::setTransformFromPoses(
 
   // set map to odom for our transformation thread to publish
   boost::mutex::scoped_lock lock(map_to_odom_mutex_);
-  map_to_odom_ = tf2::Transform(tf2::Quaternion(odom_to_map.getRotation() ),
-      tf2::Vector3(odom_to_map.getOrigin() ) ).inverse();
+  map_to_odom_ = tf2::Transform(
+    tf2::Quaternion(odom_to_map.getRotation() ),
+    tf2::Vector3(odom_to_map.getOrigin() ) ).inverse();
 
   return odom_to_map;
 }
@@ -494,7 +608,7 @@ LocalizedRangeScan * SlamToolbox::getLocalizedRangeScan(
     laser->GetName(), readings);
   range_scan->SetOdometricPose(transformed_pose);
   range_scan->SetCorrectedPose(transformed_pose);
-  range_scan->SetTime(rclcpp::Time(scan->header.stamp).nanoseconds()/1.e9);
+  range_scan->SetTime(rclcpp::Time(scan->header.stamp).nanoseconds() / 1.e9);
   return range_scan;
 }
 
@@ -583,7 +697,8 @@ LocalizedRangeScan * SlamToolbox::addScan(
   } else if (processor_type_ == PROCESS_NEAR_REGION) {
     boost::mutex::scoped_lock l(pose_mutex_);
     if (!process_near_pose_) {
-      RCLCPP_ERROR(get_logger(), "Process near region called without a "
+      RCLCPP_ERROR(
+        get_logger(), "Process near region called without a "
         "valid region request. Ignoring scan.");
       return nullptr;
     }
@@ -595,7 +710,8 @@ LocalizedRangeScan * SlamToolbox::addScan(
     update_reprocessing_transform = true;
     processor_type_ = PROCESS;
   } else {
-    RCLCPP_FATAL(get_logger(),
+    RCLCPP_FATAL(
+      get_logger(),
       "SlamToolbox: No valid processor type set! Exiting.");
     exit(-1);
   }
@@ -607,7 +723,8 @@ LocalizedRangeScan * SlamToolbox::addScan(
       scan_holder_->addScan(*scan);
     }
 
-    setTransformFromPoses(range_scan->GetCorrectedPose(), odom_pose,
+    setTransformFromPoses(
+      range_scan->GetCorrectedPose(), odom_pose,
       scan->header.stamp, update_reprocessing_transform);
     dataset_->Add(range_scan);
 
@@ -672,7 +789,8 @@ bool SlamToolbox::pauseNewMeasurementsCallback(
   state_.set(NEW_MEASUREMENTS, !curr_state);
 
   this->set_parameter({"paused_new_measurements", !curr_state});
-  RCLCPP_INFO(get_logger(), "SlamToolbox: Toggled to %s",
+  RCLCPP_INFO(
+    get_logger(), "SlamToolbox: Toggled to %s",
     !curr_state ? "pause taking new measurements." :
     "actively taking new measurements.");
   resp->status = true;
@@ -750,14 +868,16 @@ void SlamToolbox::loadSerializedPoseGraph(
   closure_assistant_->setMapper(smapper_->getMapper());
 
   if (!smapper_->getMapper()) {
-    RCLCPP_FATAL(get_logger(),
+    RCLCPP_FATAL(
+      get_logger(),
       "loadSerializedPoseGraph: Could not properly load "
       "a valid mapping object. Did you modify something by hand?");
     exit(-1);
   }
 
   if (dataset_->GetLasers().size() < 1) {
-    RCLCPP_FATAL(get_logger(), "loadSerializedPoseGraph: Cannot deserialize "
+    RCLCPP_FATAL(
+      get_logger(), "loadSerializedPoseGraph: Cannot deserialize "
       "dataset with no laser objects.");
     exit(-1);
   }
@@ -771,7 +891,8 @@ void SlamToolbox::loadSerializedPoseGraph(
     SensorManager::GetInstance()->RegisterSensor(pSensor);
     lasers_.clear();
   } else {
-    RCLCPP_ERROR(get_logger(), "Invalid sensor pointer in dataset."
+    RCLCPP_ERROR(
+      get_logger(), "Invalid sensor pointer in dataset."
       " Unable to register sensor.");
   }
 
@@ -786,7 +907,8 @@ bool SlamToolbox::deserializePoseGraphCallback(
 /*****************************************************************************/
 {
   if (req->match_type == slam_toolbox::srv::DeserializePoseGraph::Request::UNSET) {
-    RCLCPP_ERROR(get_logger(), "Deserialization called without valid"
+    RCLCPP_ERROR(
+      get_logger(), "Deserialization called without valid"
       " processor type set. Undefined behavior!");
     return false;
   }
@@ -807,7 +929,8 @@ bool SlamToolbox::deserializePoseGraphCallback(
   std::unique_ptr<Mapper> mapper = std::make_unique<Mapper>();
 
   if (!serialization::read(filename, *mapper, *dataset, shared_from_this())) {
-    RCLCPP_ERROR(get_logger(), "DeserializePoseGraph: Failed to read "
+    RCLCPP_ERROR(
+      get_logger(), "DeserializePoseGraph: Failed to read "
       "file: %s.", filename.c_str());
     return true;
   }
@@ -824,16 +947,19 @@ bool SlamToolbox::deserializePoseGraphCallback(
       break;
     case procType::START_AT_GIVEN_POSE:
       processor_type_ = PROCESS_NEAR_REGION;
-      process_near_pose_ = std::make_unique<Pose2>(req->initial_pose.x,
-          req->initial_pose.y, req->initial_pose.theta);
+      process_near_pose_ = std::make_unique<Pose2>(
+        req->initial_pose.x,
+        req->initial_pose.y, req->initial_pose.theta);
       break;
     case procType::LOCALIZE_AT_POSE:
       processor_type_ = PROCESS_LOCALIZATION;
-      process_near_pose_ = std::make_unique<Pose2>(req->initial_pose.x,
-          req->initial_pose.y, req->initial_pose.theta);
+      process_near_pose_ = std::make_unique<Pose2>(
+        req->initial_pose.x,
+        req->initial_pose.y, req->initial_pose.theta);
       break;
     default:
-      RCLCPP_FATAL(get_logger(),
+      RCLCPP_FATAL(
+        get_logger(),
         "Deserialization called without valid processor type set.");
   }
 

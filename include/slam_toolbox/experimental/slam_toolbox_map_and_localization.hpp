@@ -20,6 +20,8 @@
 #include <memory>
 #include "slam_toolbox/slam_toolbox_localization.hpp"
 #include "std_srvs/srv/set_bool.hpp"
+#include "lifecycle_msgs/msg/transition.hpp"
+#include "lifecycle_msgs/srv/change_state.hpp"
 
 namespace slam_toolbox
 {
@@ -30,7 +32,7 @@ public:
   explicit MapAndLocalizationSlamToolbox(rclcpp::NodeOptions options);
   virtual ~MapAndLocalizationSlamToolbox() {}
   void loadPoseGraphByParams() override;
-  void configure() override;
+  void configure();
 
 protected:
   void laserCallback(

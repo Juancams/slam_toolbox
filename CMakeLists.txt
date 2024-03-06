@@ -14,6 +14,8 @@ find_package(ament_cmake REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
+find_package(lifecycle_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -41,6 +43,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(dependencies
   rclcpp
+  rclcpp_lifecycle
+  lifecycle_msgs
   message_filters
   nav_msgs
   sensor_msgs

@@ -59,7 +59,7 @@ protected:
 
   std::shared_ptr<rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>>
   localization_pose_sub_;
-  std::shared_ptr<rclcpp::Service<std_srvs::srv::Empty> > clear_localization_;
+  std::shared_ptr<rclcpp::Service<std_srvs::srv::Empty>> clear_localization_;
 };
 
 }  // namespace slam_toolbox

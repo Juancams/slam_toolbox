@@ -10,12 +10,16 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
+find_package(lifecycle_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED system serialization filesystem thread)
 find_package(TBB REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 
 set(dependencies
   rclcpp
+  rclcpp_lifecycle
+  lifecycle_msgs
 )
 
 include_directories(include ${EIGEN3_INCLUDE_DIRS} 

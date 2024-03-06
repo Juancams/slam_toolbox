@@ -48,7 +48,8 @@ void AsynchronousSlamToolbox::laserCallback(
   LaserRangeFinder * laser = getLaser(scan);
 
   if (!laser) {
-    RCLCPP_WARN(get_logger(), "Failed to create laser device for"
+    RCLCPP_WARN(
+      get_logger(), "Failed to create laser device for"
       " %s; discarding scan", scan->header.frame_id.c_str());
     return;
   }
@@ -64,7 +65,8 @@ bool AsynchronousSlamToolbox::deserializePoseGraphCallback(
 /*****************************************************************************/
 {
   if (req->match_type == procType::LOCALIZE_AT_POSE) {
-    RCLCPP_WARN(get_logger(), "Requested a localization deserialization "
+    RCLCPP_WARN(
+      get_logger(), "Requested a localization deserialization "
       "in non-localization mode.");
     return false;
   }

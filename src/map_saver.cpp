@@ -24,12 +24,14 @@ namespace map_saver
 {
 
 /*****************************************************************************/
-MapSaver::MapSaver(rclcpp::Node::SharedPtr node, const std::string & map_name)
+MapSaver::MapSaver(rclcpp_lifecycle::LifecycleNode::SharedPtr node, const std::string & map_name)
 : node_(node), map_name_(map_name), received_map_(false)
 /*****************************************************************************/
 {
-  server_ = node_->create_service<slam_toolbox::srv::SaveMap>("slam_toolbox/save_map",
-      std::bind(&MapSaver::saveMapCallback, this, std::placeholders::_1,
+  server_ = node_->create_service<slam_toolbox::srv::SaveMap>(
+    "slam_toolbox/save_map",
+    std::bind(
+      &MapSaver::saveMapCallback, this, std::placeholders::_1,
       std::placeholders::_2, std::placeholders::_3));
 
   auto mapCallback =
@@ -50,7 +52,8 @@ bool MapSaver::saveMapCallback(
 /*****************************************************************************/
 {
   if (!received_map_) {
-    RCLCPP_WARN(node_->get_logger(),
+    RCLCPP_WARN(
+      node_->get_logger(),
       "Map Saver: Cannot save map, no map yet received on topic %s.",
       map_name_.c_str());
     response->result = response->RESULT_NO_MAP_RECEIEVD;
@@ -65,18 +68,26 @@ bool MapSaver::saveMapCallback(
   }
 
   if (name != "") {
-    RCLCPP_INFO(node_->get_logger(),
+    RCLCPP_INFO(
+      node_->get_logger(),
       "SlamToolbox: Saving map as %s.", name.c_str());
-    int rc = system(("ros2 run nav2_map_server map_saver_cli -f " + name  + " --ros-args -p map_subscribe_transient_local:=true" + set_namespace).c_str());
+    int rc =
+      system(
+      ("ros2 run nav2_map_server map_saver_cli -f " + name +
+      " --ros-args -p map_subscribe_transient_local:=true" + set_namespace).c_str());
     if (rc == 0) {
       response->result = response->RESULT_SUCCESS;
     } else {
       response->result = response->RESULT_UNDEFINED_FAILURE;
     }
   } else {
-    RCLCPP_INFO(node_->get_logger(),
+    RCLCPP_INFO(
+      node_->get_logger(),
       "SlamToolbox: Saving map in current directory.");
-    int rc = system(("ros2 run nav2_map_server map_saver_cli --ros-args -p map_subscribe_transient_local:=true" + set_namespace).c_str());
+    int rc =
+      system(
+      ("ros2 run nav2_map_server map_saver_cli --ros-args -p map_subscribe_transient_local:=true" +
+      set_namespace).c_str());
     if (rc == 0) {
       response->result = response->RESULT_SUCCESS;
     } else {

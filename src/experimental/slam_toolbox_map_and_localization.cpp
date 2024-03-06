@@ -31,15 +31,26 @@ MapAndLocalizationSlamToolbox::MapAndLocalizationSlamToolbox(rclcpp::NodeOptions
 
   ssSetLocalizationMode_ = create_service<std_srvs::srv::SetBool>(
     "slam_toolbox/set_localization_mode",
-    std::bind(&MapAndLocalizationSlamToolbox::setLocalizationModeCallback, this,
-    std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    std::bind(
+      &MapAndLocalizationSlamToolbox::setLocalizationModeCallback, this,
+      std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 /*****************************************************************************/
 void MapAndLocalizationSlamToolbox::configure()
 /*****************************************************************************/
 {
-  SlamToolbox::configure();
+  auto client = this->create_client<lifecycle_msgs::srv::ChangeState>(
+    "/slam_toolbox/change_state");
+
+  while (!client->wait_for_service(std::chrono::seconds(1))) {
+    RCLCPP_ERROR(get_logger(), "service not available, waiting again...");
+  }
+
+  auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
+  request->transition.id = lifecycle_msgs::msg::Transition::TRANSITION_CONFIGURE;
+  auto result = client->async_send_request(request);
+
   toggleMode(false);
 }
 
@@ -56,7 +67,8 @@ bool MapAndLocalizationSlamToolbox::setLocalizationModeCallback(
   return true;
 }
 
-void MapAndLocalizationSlamToolbox::toggleMode(bool enable_localization) {
+void MapAndLocalizationSlamToolbox::toggleMode(bool enable_localization)
+{
   bool in_localization_mode = processor_type_ == PROCESS_LOCALIZATION;
   if (in_localization_mode == enable_localization) {
     return;
@@ -68,16 +80,19 @@ void MapAndLocalizationSlamToolbox::toggleMode(bool enable_localization) {
 
     localization_pose_sub_ =
       create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-      "initialpose", 1, std::bind(&MapAndLocalizationSlamToolbox::localizePoseCallback, this, std::placeholders::_1));
+      "initialpose", 1,
+      std::bind(
+        &MapAndLocalizationSlamToolbox::localizePoseCallback, this,
+        std::placeholders::_1));
     clear_localization_ = create_service<std_srvs::srv::Empty>(
       "slam_toolbox/clear_localization_buffer",
-      std::bind(&MapAndLocalizationSlamToolbox::clearLocalizationBuffer, this,
-      std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+      std::bind(
+        &MapAndLocalizationSlamToolbox::clearLocalizationBuffer, this,
+        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
     // in localization mode, disable map saver
     map_saver_.reset();
-  }
-  else {
+  } else {
     RCLCPP_INFO(get_logger(), "Enabling mapping ...");
     processor_type_ = PROCESS;
     localization_pose_sub_.reset();
@@ -97,8 +112,7 @@ void MapAndLocalizationSlamToolbox::loadPoseGraphByParams()
 {
   if (processor_type_ == PROCESS_LOCALIZATION) {
     LocalizationSlamToolbox::loadPoseGraphByParams();
-  }
-  else {
+  } else {
     SlamToolbox::loadPoseGraphByParams();
   }
 }
@@ -112,8 +126,7 @@ bool MapAndLocalizationSlamToolbox::serializePoseGraphCallback(
 {
   if (processor_type_ == PROCESS_LOCALIZATION) {
     return LocalizationSlamToolbox::serializePoseGraphCallback(request_header, req, resp);
-  }
-  else {
+  } else {
     return SlamToolbox::serializePoseGraphCallback(request_header, req, resp);
   }
 }
@@ -127,8 +140,7 @@ bool MapAndLocalizationSlamToolbox::deserializePoseGraphCallback(
 {
   if (processor_type_ == PROCESS_LOCALIZATION) {
     return LocalizationSlamToolbox::deserializePoseGraphCallback(request_header, req, resp);
-  }
-  else {
+  } else {
     return SlamToolbox::deserializePoseGraphCallback(request_header, req, resp);
   }
 }
@@ -151,7 +163,8 @@ void MapAndLocalizationSlamToolbox::laserCallback(
   LaserRangeFinder * laser = getLaser(scan);
 
   if (!laser) {
-    RCLCPP_WARN(get_logger(), "Failed to create laser device for"
+    RCLCPP_WARN(
+      get_logger(), "Failed to create laser device for"
       " %s; discarding scan", scan->header.frame_id.c_str());
     return;
   }
@@ -168,8 +181,7 @@ LocalizedRangeScan * MapAndLocalizationSlamToolbox::addScan(
 {
   if (processor_type_ == PROCESS_LOCALIZATION) {
     return LocalizationSlamToolbox::addScan(laser, scan, odom_pose);
-  }
-  else {
+  } else {
     return SlamToolbox::addScan(laser, scan, odom_pose);
   }
 }

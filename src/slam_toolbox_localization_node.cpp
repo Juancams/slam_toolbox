@@ -27,7 +27,7 @@ int main(int argc, char ** argv)
   int stack_size = 40000000;
   {
     auto temp_node = std::make_shared<rclcpp::Node>("slam_toolbox");
-    temp_node->declare_parameter("stack_size_to_use",rclcpp::ParameterType::PARAMETER_INTEGER );
+    temp_node->declare_parameter("stack_size_to_use", rclcpp::ParameterType::PARAMETER_INTEGER);
     if (temp_node->get_parameter("stack_size_to_use", stack_size)) {
       RCLCPP_INFO(temp_node->get_logger(), "Node using stack size %i", (int)stack_size);
       const rlim_t max_stack_size = stack_size;
@@ -42,8 +42,6 @@ int main(int argc, char ** argv)
 
   rclcpp::NodeOptions options;
   auto localize_node = std::make_shared<slam_toolbox::LocalizationSlamToolbox>(options);
-  localize_node->configure();
-  localize_node->loadPoseGraphByParams();
   rclcpp::spin(localize_node->get_node_base_interface());
   rclcpp::shutdown();
   return 0;

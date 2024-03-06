@@ -28,11 +28,14 @@ SynchronousSlamToolbox::SynchronousSlamToolbox(rclcpp::NodeOptions options)
 : SlamToolbox(options)
 /*****************************************************************************/
 {
-  ssClear_ = this->create_service<slam_toolbox::srv::ClearQueue>("slam_toolbox/clear_queue",
-      std::bind(&SynchronousSlamToolbox::clearQueueCallback, this,
+  ssClear_ = this->create_service<slam_toolbox::srv::ClearQueue>(
+    "slam_toolbox/clear_queue",
+    std::bind(
+      &SynchronousSlamToolbox::clearQueueCallback, this,
       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-  threads_.push_back(std::make_unique<boost::thread>(
+  threads_.push_back(
+    std::make_unique<boost::thread>(
       boost::bind(&SynchronousSlamToolbox::run, this)));
 }
 
@@ -53,7 +56,8 @@ void SynchronousSlamToolbox::run()
           q_.pop();
 
           if (q_.size() > 10) {
-            RCLCPP_WARN(get_logger(), "Queue size has grown to: %i. "
+            RCLCPP_WARN(
+              get_logger(), "Queue size has grown to: %i. "
               "Recommend stopping until message is gone if online mapping.",
               (int)q_.size());
           }
@@ -87,7 +91,8 @@ void SynchronousSlamToolbox::laserCallback(
   LaserRangeFinder * laser = getLaser(scan);
 
   if (!laser) {
-    RCLCPP_WARN(get_logger(), "SynchronousSlamToolbox: Failed to create laser"
+    RCLCPP_WARN(
+      get_logger(), "SynchronousSlamToolbox: Failed to create laser"
       " device for %s; discarding scan", scan->header.frame_id.c_str());
     return;
   }
@@ -106,7 +111,8 @@ bool SynchronousSlamToolbox::clearQueueCallback(
   std::shared_ptr<slam_toolbox::srv::ClearQueue::Response> resp)
 /*****************************************************************************/
 {
-  RCLCPP_INFO(get_logger(), "SynchronousSlamToolbox: "
+  RCLCPP_INFO(
+    get_logger(), "SynchronousSlamToolbox: "
     "Clearing all queued scans to add to map.");
   while (!q_.empty()) {
     q_.pop();
@@ -123,7 +129,8 @@ bool SynchronousSlamToolbox::deserializePoseGraphCallback(
 /*****************************************************************************/
 {
   if (req->match_type == procType::LOCALIZE_AT_POSE) {
-    RCLCPP_ERROR(get_logger(), "Requested a localization deserialization "
+    RCLCPP_ERROR(
+      get_logger(), "Requested a localization deserialization "
       "in non-localization mode.");
     return false;
   }

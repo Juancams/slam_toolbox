@@ -26,7 +26,7 @@ namespace loop_closure_assistant
 
 /*****************************************************************************/
 LoopClosureAssistant::LoopClosureAssistant(
-  rclcpp::Node::SharedPtr node,
+  rclcpp_lifecycle::LifecycleNode::SharedPtr node,
   karto::Mapper * mapper,
   laser_utils::ScanHolder * scan_holder,
   PausedState & state, ProcessType & processor_type)
@@ -45,15 +45,17 @@ LoopClosureAssistant::LoopClosureAssistant(
   solver_ = mapper_->getScanSolver();
 
   ssClear_manual_ = node_->create_service<slam_toolbox::srv::Clear>(
-    "slam_toolbox/clear_changes", std::bind(&LoopClosureAssistant::clearChangesCallback, 
-    this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-  
+    "slam_toolbox/clear_changes", std::bind(
+      &LoopClosureAssistant::clearChangesCallback,
+      this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
   ssLoopClosure_ = node_->create_service<slam_toolbox::srv::LoopClosure>(
-    "slam_toolbox/manual_loop_closure", std::bind(&LoopClosureAssistant::manualLoopClosureCallback,
-    this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-  
+    "slam_toolbox/manual_loop_closure", std::bind(
+      &LoopClosureAssistant::manualLoopClosureCallback,
+      this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
   scan_publisher_ = node_->create_publisher<sensor_msgs::msg::LaserScan>(
-    "slam_toolbox/scan_visualization",10);
+    "slam_toolbox/scan_visualization", 10);
   interactive_server_ = std::make_unique<interactive_markers::InteractiveMarkerServer>(
     "slam_toolbox",
     node_->get_node_base_interface(),
@@ -62,8 +64,9 @@ LoopClosureAssistant::LoopClosureAssistant(
     node_->get_node_topics_interface(),
     node_->get_node_services_interface());
   ssInteractive_ = node_->create_service<slam_toolbox::srv::ToggleInteractive>(
-    "slam_toolbox/toggle_interactive_mode", std::bind(&LoopClosureAssistant::interactiveModeCallback,
-    this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    "slam_toolbox/toggle_interactive_mode", std::bind(
+      &LoopClosureAssistant::interactiveModeCallback,
+      this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 
   marker_publisher_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>(
@@ -79,13 +82,14 @@ void LoopClosureAssistant::setMapper(karto::Mapper * mapper)
 }
 
 /*****************************************************************************/
-void LoopClosureAssistant::processInteractiveFeedback(const
+void LoopClosureAssistant::processInteractiveFeedback(
+  const
   visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr feedback)
 /*****************************************************************************/
 {
-  if (processor_type_ != PROCESS)
-  {
-    RCLCPP_ERROR_THROTTLE(node_->get_logger(), *node_->get_clock(), 5, 
+  if (processor_type_ != PROCESS) {
+    RCLCPP_ERROR_THROTTLE(
+      node_->get_logger(), *node_->get_clock(), 5,
       "Interactive mode is invalid outside processing mode.");
     return;
   }
@@ -94,28 +98,30 @@ void LoopClosureAssistant::processInteractiveFeedback(const
 
   // was depressed, something moved, and now released
   if (feedback->event_type ==
-      visualization_msgs::msg::InteractiveMarkerFeedback::MOUSE_UP &&
-      feedback->mouse_point_valid)
+    visualization_msgs::msg::InteractiveMarkerFeedback::MOUSE_UP &&
+    feedback->mouse_point_valid)
   {
-    addMovedNodes(id, Eigen::Vector3d(feedback->mouse_point.x,
-      feedback->mouse_point.y, tf2::getYaw(feedback->pose.orientation)));
+    addMovedNodes(
+      id, Eigen::Vector3d(
+        feedback->mouse_point.x,
+        feedback->mouse_point.y, tf2::getYaw(feedback->pose.orientation)));
   }
 
   // is currently depressed, being moved before release
   if (feedback->event_type ==
-      visualization_msgs::msg::InteractiveMarkerFeedback::POSE_UPDATE)
+    visualization_msgs::msg::InteractiveMarkerFeedback::POSE_UPDATE)
   {
     // get scan
     sensor_msgs::msg::LaserScan scan = scan_holder_->getCorrectedScan(id);
 
     // get correct orientation
-    tf2::Quaternion quat(0.,0.,0.,1.0), msg_quat(0.,0.,0.,1.0);
+    tf2::Quaternion quat(0., 0., 0., 1.0), msg_quat(0., 0., 0., 1.0);
     double node_yaw, first_node_yaw;
     solver_->GetNodeOrientation(id, node_yaw);
     solver_->GetNodeOrientation(0, first_node_yaw);
-    tf2::Quaternion q1(0.,0.,0.,1.0);
+    tf2::Quaternion q1(0., 0., 0., 1.0);
     q1.setEuler(0., 0., node_yaw - 3.14159);
-    tf2::Quaternion q2(0.,0.,0.,1.0);
+    tf2::Quaternion q2(0., 0., 0., 1.0);
     q2.setEuler(0., 0., 3.14159);
     quat *= q1;
     quat *= q2;
@@ -127,8 +133,10 @@ void LoopClosureAssistant::processInteractiveFeedback(const
 
     // create correct transform
     tf2::Transform transform;
-    transform.setOrigin(tf2::Vector3(feedback->pose.position.x,
-      feedback->pose.position.y, 0.));
+    transform.setOrigin(
+      tf2::Vector3(
+        feedback->pose.position.x,
+        feedback->pose.position.y, 0.));
     transform.setRotation(quat);
 
     // publish the scan visualization with transform
@@ -194,10 +202,11 @@ void LoopClosureAssistant::publishGraph()
       if (interactive_mode && enable_interactive_mode_) {
         visualization_msgs::msg::InteractiveMarker int_marker =
           vis_utils::toInteractiveMarker(m, 0.3, node_);
-        interactive_server_->insert(int_marker,
+        interactive_server_->insert(
+          int_marker,
           std::bind(
-          &LoopClosureAssistant::processInteractiveFeedback,
-          this, std::placeholders::_1));
+            &LoopClosureAssistant::processInteractiveFeedback,
+            this, std::placeholders::_1));
       } else {
         marray.markers.push_back(m);
       }
@@ -267,12 +276,11 @@ void LoopClosureAssistant::publishGraph()
 /*****************************************************************************/
 bool LoopClosureAssistant::manualLoopClosureCallback(
   const std::shared_ptr<rmw_request_id_t> request_header,
-  const std::shared_ptr<slam_toolbox::srv::LoopClosure::Request> req, 
+  const std::shared_ptr<slam_toolbox::srv::LoopClosure::Request> req,
   std::shared_ptr<slam_toolbox::srv::LoopClosure::Response> resp)
 /*****************************************************************************/
 {
-  if(!enable_interactive_mode_)
-  {
+  if (!enable_interactive_mode_) {
     RCLCPP_WARN(
       node_->get_logger(), "Called manual loop closure"
       " with interactive mode disabled. Ignoring.");
@@ -282,8 +290,7 @@ bool LoopClosureAssistant::manualLoopClosureCallback(
   {
     boost::mutex::scoped_lock lock(moved_nodes_mutex_);
 
-    if (moved_nodes_.size() == 0)
-    {
+    if (moved_nodes_.size() == 0) {
       RCLCPP_WARN(
         node_->get_logger(),
         "No moved nodes to attempt manual loop closure.");
@@ -296,10 +303,10 @@ bool LoopClosureAssistant::manualLoopClosureCallback(
       "loop close with %i moved nodes.", (int)moved_nodes_.size());
     // for each in node map
     std::map<int, Eigen::Vector3d>::const_iterator it = moved_nodes_.begin();
-    for (it; it != moved_nodes_.end(); ++it)
-    {
-      moveNode(it->first,
-        Eigen::Vector3d(it->second(0),it->second(1), it->second(2)));
+    for (it; it != moved_nodes_.end(); ++it) {
+      moveNode(
+        it->first,
+        Eigen::Vector3d(it->second(0), it->second(1), it->second(2)));
     }
   }
 
@@ -316,12 +323,11 @@ bool LoopClosureAssistant::manualLoopClosureCallback(
 /*****************************************************************************/
 bool LoopClosureAssistant::interactiveModeCallback(
   const std::shared_ptr<rmw_request_id_t> request_header,
-  const std::shared_ptr<slam_toolbox::srv::ToggleInteractive::Request>  req,
+  const std::shared_ptr<slam_toolbox::srv::ToggleInteractive::Request> req,
   std::shared_ptr<slam_toolbox::srv::ToggleInteractive::Response> resp)
 /*****************************************************************************/
 {
-  if(!enable_interactive_mode_)
-  {
+  if (!enable_interactive_mode_) {
     RCLCPP_WARN(
       node_->get_logger(),
       "Called toggle interactive mode with interactive mode disabled. Ignoring.");
@@ -336,9 +342,10 @@ bool LoopClosureAssistant::interactiveModeCallback(
     node_->set_parameter(rclcpp::Parameter("interactive_mode", interactive_mode_));
   }
 
-  RCLCPP_INFO(node_->get_logger(),
-     "SlamToolbox: Toggling %s interactive mode.",
-      interactive_mode ? "on" : "off");
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "SlamToolbox: Toggling %s interactive mode.",
+    interactive_mode ? "on" : "off");
   publishGraph();
   clearMovedNodes();
 
@@ -360,12 +367,11 @@ void LoopClosureAssistant::moveNode(
 /*****************************************************************************/
 bool LoopClosureAssistant::clearChangesCallback(
   const std::shared_ptr<rmw_request_id_t> request_header,
-  const std::shared_ptr<slam_toolbox::srv::Clear::Request> req, 
+  const std::shared_ptr<slam_toolbox::srv::Clear::Request> req,
   std::shared_ptr<slam_toolbox::srv::Clear::Response> resp)
 /*****************************************************************************/
 {
-  if(!enable_interactive_mode_)
-  {
+  if (!enable_interactive_mode_) {
     RCLCPP_WARN(
       node_->get_logger(),
       "Called Clear changes with interactive mode disabled. Ignoring.");
@@ -381,7 +387,7 @@ bool LoopClosureAssistant::clearChangesCallback(
 }
 
 /*****************************************************************************/
-void  LoopClosureAssistant::clearMovedNodes()
+void LoopClosureAssistant::clearMovedNodes()
 /*****************************************************************************/
 {
   boost::mutex::scoped_lock lock(moved_nodes_mutex_);
@@ -395,7 +401,7 @@ void LoopClosureAssistant::addMovedNodes(const int & id, Eigen::Vector3d vec)
   RCLCPP_INFO(
     node_->get_logger(),
     "LoopClosureAssistant: Node %i new manual loop closure "
-    "pose has been recorded.",id);
+    "pose has been recorded.", id);
   boost::mutex::scoped_lock lock(moved_nodes_mutex_);
   moved_nodes_[id] = vec;
 }

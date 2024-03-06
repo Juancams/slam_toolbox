@@ -153,9 +153,9 @@ protected:
   std::unique_ptr<std::thread> _thread;
 
   ContinueMappingType _match_type;
-  
+
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr _initialposeSub;
-  
+
   void InitialPoseCallback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr pose);
 };
 

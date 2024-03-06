@@ -30,6 +30,7 @@
 #include <fstream>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "message_filters/subscriber.h"
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2_ros/transform_listener.h"
@@ -55,15 +56,23 @@ namespace slam_toolbox
 // dirty, dirty cheat I love
 using namespace ::toolbox_types;  // NOLINT
 using namespace ::karto;  // NOLINT
+using CallbackReturnT =
+  rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
-class SlamToolbox : public rclcpp::Node
+class SlamToolbox : public rclcpp_lifecycle::LifecycleNode
 {
 public:
   explicit SlamToolbox(rclcpp::NodeOptions);
   SlamToolbox();
   virtual ~SlamToolbox();
-  virtual void configure();
   virtual void loadPoseGraphByParams();
+
+  CallbackReturnT on_configure(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_activate(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_deactivate(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_cleanup(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_shutdown(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_error(const rclcpp_lifecycle::State & state);
 
 protected:
   // threads
@@ -132,15 +141,17 @@ protected:
   std::unique_ptr<tf2_ros::TransformBroadcaster> tfB_;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::msg::LaserScan>> scan_filter_sub_;
   std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>> scan_filter_;
-  std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>> sst_;
-  std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::MapMetaData>> sstm_;
-  std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>> pose_pub_;
+  std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::OccupancyGrid>> sst_;
+  std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::MapMetaData>> sstm_;
+  std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseWithCovarianceStamped>>
+  pose_pub_;
   std::shared_ptr<rclcpp::Service<nav_msgs::srv::GetMap>> ssMap_;
   std::shared_ptr<rclcpp::Service<slam_toolbox::srv::Pause>> ssPauseMeasurements_;
   std::shared_ptr<rclcpp::Service<slam_toolbox::srv::SerializePoseGraph>> ssSerialize_;
   std::shared_ptr<rclcpp::Service<slam_toolbox::srv::DeserializePoseGraph>> ssDesserialize_;
 
   // Storage for ROS parameters
+  rclcpp::Node::SharedPtr node_;
   std::string odom_frame_, map_frame_, base_frame_, map_name_, scan_topic_;
   bool use_map_saver_;
   rclcpp::Duration transform_timeout_, minimum_time_interval_;

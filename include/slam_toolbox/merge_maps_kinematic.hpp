@@ -29,6 +29,7 @@
 #include <fstream>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "interactive_markers/interactive_marker_server.hpp"
 #include "interactive_markers/menu_handler.hpp"
 #include "tf2_ros/transform_broadcaster.h"
@@ -46,8 +47,10 @@
 
 using namespace toolbox_types;  // NOLINT
 using namespace karto;  // NOLINT
+using CallbackReturnT =
+  rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
-class MergeMapsKinematic : public rclcpp::Node
+class MergeMapsKinematic : public rclcpp_lifecycle::LifecycleNode
 {
   typedef std::vector<karto::LocalizedRangeScanVector>::iterator LocalizedRangeScansVecIt;
   typedef karto::LocalizedRangeScanVector::iterator LocalizedRangeScansIt;
@@ -56,7 +59,13 @@ public:
   MergeMapsKinematic();
   ~MergeMapsKinematic();
   // setup
-  void configure();
+
+  CallbackReturnT on_configure(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_activate(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_deactivate(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_cleanup(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_shutdown(const rclcpp_lifecycle::State & state);
+  CallbackReturnT on_error(const rclcpp_lifecycle::State & state);
 
 private:
   // callback

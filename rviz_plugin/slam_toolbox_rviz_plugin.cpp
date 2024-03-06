@@ -51,7 +51,7 @@ SlamToolboxPlugin::SlamToolboxPlugin(QWidget * parent)
     "/slam_toolbox/paused_new_measurements", paused_measure);
   interactive = ros_node_->declare_parameter(
     "/slam_toolbox/interactive_mode", interactive);
-    
+
   _initialposeSub =
     ros_node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "/initialpose", 10,
@@ -148,7 +148,8 @@ SlamToolboxPlugin::SlamToolboxPlugin(QWidget * parent)
   connect(_check1, SIGNAL(stateChanged(int)), this, SLOT(InteractiveCb(int)));
   _check2 = new QCheckBox();
   _check2->setChecked(!paused_measure);
-  connect(_check2, SIGNAL(stateChanged(int)), this,
+  connect(
+    _check2, SIGNAL(stateChanged(int)), this,
     SLOT(PauseMeasurementsCb(int)));
   _radio1 = new QRadioButton(tr("Start At Dock"));
   _radio1->setChecked(true);
@@ -252,7 +253,7 @@ SlamToolboxPlugin::~SlamToolboxPlugin()
   _thread->join();
   _thread.reset();
 }
-  
+
 /*****************************************************************************/
 void SlamToolboxPlugin::InitialPoseCallback(
   const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
@@ -266,7 +267,7 @@ void SlamToolboxPlugin::InitialPoseCallback(
   _line5->setText(QString::number(msg->pose.pose.position.x, 'f', 2));
   _line6->setText(QString::number(msg->pose.pose.position.y, 'f', 2));
   tf2::Quaternion quat_tf;
-  tf2::convert(msg->pose.pose.orientation , quat_tf);
+  tf2::convert(msg->pose.pose.orientation, quat_tf);
   tf2::Matrix3x3 m(quat_tf);
   double roll, pitch, yaw;
   m.getRPY(roll, pitch, yaw);
@@ -282,11 +283,13 @@ void SlamToolboxPlugin::SerializeMap()
   request->filename = _line3->text().toStdString();
   auto result_future = _serialize->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
-    RCLCPP_WARN(ros_node_->get_logger(),
+    RCLCPP_WARN(
+      ros_node_->get_logger(),
       "SlamToolbox: Failed to serialize"
       " pose graph to file, is service running?");
   }
@@ -304,28 +307,22 @@ void SlamToolboxPlugin::DeserializeMap()
   if (_match_type == PROCESS_FIRST_NODE_CMT) {
     request->match_type = procType::START_AT_FIRST_NODE;
   } else if (_match_type == PROCESS_NEAR_REGION_CMT) {
-    try
-    {
+    try {
       request->match_type = procType::START_AT_GIVEN_POSE;
       request->initial_pose.x = std::stod(_line5->text().toStdString());
       request->initial_pose.y = std::stod(_line6->text().toStdString());
       request->initial_pose.theta = std::stod(_line7->text().toStdString());
-    }
-    catch (const std::invalid_argument& ia)
-    {
+    } catch (const std::invalid_argument & ia) {
       RCLCPP_WARN(ros_node_->get_logger(), "Initial pose invalid.");
       return;
     }
   } else if (_match_type == LOCALIZE_CMT) {
-    try
-    {
+    try {
       request->match_type = procType::LOCALIZE_AT_POSE;
       request->initial_pose.x = std::stod(_line5->text().toStdString());
       request->initial_pose.y = std::stod(_line6->text().toStdString());
       request->initial_pose.theta = std::stod(_line7->text().toStdString());
-    }
-    catch (const std::invalid_argument& ia)
-    {
+    } catch (const std::invalid_argument & ia) {
       RCLCPP_WARN(ros_node_->get_logger(), "Initial pose invalid.");
       return;
     }
@@ -338,8 +335,9 @@ void SlamToolboxPlugin::DeserializeMap()
 
   auto result_future = _load_map->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_WARN(
@@ -357,8 +355,9 @@ void SlamToolboxPlugin::LoadSubmap()
   request->filename = _line2->text().toStdString();
   auto result_future = _load_submap_for_merging->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_WARN(
@@ -373,8 +372,9 @@ void SlamToolboxPlugin::GenerateMap()
   auto request = std::make_shared<slam_toolbox::srv::MergeMaps::Request>();
   auto result_future = _merge->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_WARN(
@@ -390,8 +390,9 @@ void SlamToolboxPlugin::ClearChanges()
   auto request = std::make_shared<slam_toolbox::srv::Clear::Request>();
   auto result_future = _clearChanges->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_WARN(
@@ -407,8 +408,9 @@ void SlamToolboxPlugin::SaveChanges()
   auto request = std::make_shared<slam_toolbox::srv::LoopClosure::Request>();
   auto result_future = _saveChanges->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_WARN(
@@ -425,8 +427,9 @@ void SlamToolboxPlugin::SaveMap()
   request->name.data = _line1->text().toStdString();
   auto result_future = _saveMap->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_WARN(
@@ -443,8 +446,9 @@ void SlamToolboxPlugin::ClearQueue()
   auto request = std::make_shared<slam_toolbox::srv::ClearQueue::Request>();
   auto result_future = _clearQueue->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_WARN(
@@ -461,8 +465,9 @@ void SlamToolboxPlugin::InteractiveCb(int state)
     std::make_shared<slam_toolbox::srv::ToggleInteractive::Request>();
   auto result_future = _interactive->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_WARN(
@@ -478,8 +483,9 @@ void SlamToolboxPlugin::PauseMeasurementsCb(int state)
   auto request = std::make_shared<slam_toolbox::srv::Pause::Request>();
   auto result_future = _pause_measurements->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(ros_node_, result_future,
-    std::chrono::seconds(5)) !=
+  if (rclcpp::spin_until_future_complete(
+      ros_node_, result_future,
+      std::chrono::seconds(5)) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_WARN(

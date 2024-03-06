@@ -29,6 +29,7 @@
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "tf2/utils.h"
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "interactive_markers/interactive_marker_server.hpp"
 #include "interactive_markers/menu_handler.hpp"
 
@@ -45,7 +46,7 @@ class LoopClosureAssistant
 {
 public:
   LoopClosureAssistant(
-    rclcpp::Node::SharedPtr node, karto::Mapper * mapper,
+    rclcpp_lifecycle::LifecycleNode::SharedPtr node, karto::Mapper * mapper,
     laser_utils::ScanHolder * scan_holder, PausedState & state,
     ProcessType & processor_type);
 
@@ -58,19 +59,19 @@ public:
 private:
   bool manualLoopClosureCallback(
     const std::shared_ptr<rmw_request_id_t> request_header,
-    const std::shared_ptr<slam_toolbox::srv::LoopClosure::Request> req, 
+    const std::shared_ptr<slam_toolbox::srv::LoopClosure::Request> req,
     std::shared_ptr<slam_toolbox::srv::LoopClosure::Response> resp);
   bool clearChangesCallback(
     const std::shared_ptr<rmw_request_id_t> request_header,
-    const std::shared_ptr<slam_toolbox::srv::Clear::Request> req, 
+    const std::shared_ptr<slam_toolbox::srv::Clear::Request> req,
     std::shared_ptr<slam_toolbox::srv::Clear::Response> resp);
   bool interactiveModeCallback(
     const std::shared_ptr<rmw_request_id_t> request_header,
-    const std::shared_ptr<slam_toolbox::srv::ToggleInteractive::Request>  req,
+    const std::shared_ptr<slam_toolbox::srv::ToggleInteractive::Request> req,
     std::shared_ptr<slam_toolbox::srv::ToggleInteractive::Response> resp);
 
-  void moveNode(const int& id, const Eigen::Vector3d& pose);
-  void addMovedNodes(const int& id, Eigen::Vector3d vec);
+  void moveNode(const int & id, const Eigen::Vector3d & pose);
+  void addMovedNodes(const int & id, Eigen::Vector3d vec);
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tfB_;
   laser_utils::ScanHolder * scan_holder_;
@@ -86,7 +87,7 @@ private:
   std::unique_ptr<interactive_markers::InteractiveMarkerServer> interactive_server_;
   boost::mutex interactive_mutex_;
   bool interactive_mode_, enable_interactive_mode_;
-  rclcpp::Node::SharedPtr node_;
+  rclcpp_lifecycle::LifecycleNode::SharedPtr node_;
   std::string map_frame_;
   PausedState & state_;
   ProcessType & processor_type_;

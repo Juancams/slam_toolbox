@@ -24,6 +24,7 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/interactive_marker.hpp"
 #include "visualization_msgs/msg/interactive_marker_feedback.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
 
 namespace vis_utils
 {
@@ -32,7 +33,7 @@ inline visualization_msgs::msg::Marker toMarker(
   const std::string & frame,
   const std::string & ns,
   const double & scale,
-  rclcpp::Node::SharedPtr node)
+  rclcpp_lifecycle::LifecycleNode::SharedPtr node)
 {
   visualization_msgs::msg::Marker marker;
 
@@ -58,7 +59,7 @@ inline visualization_msgs::msg::Marker toMarker(
 inline visualization_msgs::msg::InteractiveMarker toInteractiveMarker(
   visualization_msgs::msg::Marker & marker,
   const double & scale,
-  rclcpp::Node::SharedPtr node)
+  rclcpp_lifecycle::LifecycleNode::SharedPtr node)
 {
   // marker basics
   visualization_msgs::msg::InteractiveMarker int_marker;
@@ -81,8 +82,8 @@ inline visualization_msgs::msg::InteractiveMarker toInteractiveMarker(
   control.orientation.z = 0.7071;
   control.interaction_mode =
     visualization_msgs::msg::InteractiveMarkerControl::MOVE_PLANE;
-  control.markers.push_back( marker );
-  int_marker.controls.push_back( control );
+  control.markers.push_back(marker);
+  int_marker.controls.push_back(control);
 
   // rotate control
   visualization_msgs::msg::InteractiveMarkerControl control_rot;
