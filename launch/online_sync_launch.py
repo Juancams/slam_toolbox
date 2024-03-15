@@ -21,7 +21,7 @@ def generate_launch_description():
     slam_params_file = LaunchConfiguration('slam_params_file')
 
     declare_autostart_cmd = DeclareLaunchArgument(
-        'autostart', default_value='true',
+        'autostart', default_value='false',
         description='Automatically startup the slamtoolbox. '
                     'Ignored when use_lifecycle_manager is true.')
     declare_use_lifecycle_manager = DeclareLaunchArgument(
@@ -29,12 +29,12 @@ def generate_launch_description():
         description='Enable bond connection during node activation')
     declare_use_sim_time_argument = DeclareLaunchArgument(
         'use_sim_time',
-        default_value='true',
+        default_value='false',
         description='Use simulation/Gazebo clock')
     declare_slam_params_file_cmd = DeclareLaunchArgument(
         'slam_params_file',
-        default_value=os.path.join(get_package_share_directory("slam_toolbox"),
-                                   'config', 'mapper_params_online_sync.yaml'),
+        default_value=os.path.join(get_package_share_directory("robocup_bringup"),
+                                   'params', 'tiago_nav_params.yaml'),
         description='Full path to the ROS2 parameters file to use for the slam_toolbox node')
 
     start_sync_slam_toolbox_node = LifecycleNode(
@@ -83,7 +83,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time_argument)
     ld.add_action(declare_slam_params_file_cmd)
     ld.add_action(start_sync_slam_toolbox_node)
-    ld.add_action(configure_event)
-    ld.add_action(activate_event)
+    # ld.add_action(configure_event)
+    # ld.add_action(activate_event)
 
     return ld
